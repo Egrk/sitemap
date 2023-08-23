@@ -15,6 +15,7 @@ import (
 
 var globalLinks map[string]struct{}
 var globalHost *url.URL
+var globalDepth int
 
 type Loc struct {
 	Url string `xml:"loc"`
@@ -28,18 +29,20 @@ type XmlMap struct {
 
 func main() {
 	address := flag.String("site", "", "Set the site address")
+	depthCount := flag.Int("depth", 0, "Set depth of searching")
 	flag.Parse()
 	if *address == "" {
 		fmt.Println("Pls set the site address")
 		return
 	}
+	globalDepth = *depthCount
 	globalLinks = make(map[string]struct{})
 	var err error
 	globalHost, err = url.Parse(*address)
 	if err != nil {
 		panic(err)
 	}
-	HtmlExplorer(*address)
+	HtmlExplorer(*address, 1)
 	xmlMap := XmlMap{
 		XlmnsName: "http://www.sitemaps.org/schemas/sitemap/0.9",
 	}
@@ -55,7 +58,10 @@ func main() {
 
 
 
-func HtmlExplorer(address string) {
+func HtmlExplorer(address string, depth int) {
+	if globalDepth != 0 && depth > globalDepth {
+		return
+	}
 	response, err := http.Get(address)
 	if err != nil {
 		fmt.Println("Something went wrong while requesting address: ", address)
@@ -122,7 +128,9 @@ func HtmlExplorer(address string) {
 		globalLinks[key] = struct{}{}
 	}
 
+	nextDepth := depth + 1
+
 	for key := range links {
-		HtmlExplorer(key)
+		HtmlExplorer(key, nextDepth)
 	}
 }
